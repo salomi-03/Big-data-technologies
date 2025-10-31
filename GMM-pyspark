@@ -1,0 +1,52 @@
+from pyspark.sql import SparkSession
+from pyspark.ml.clustering import GaussianMixture
+from pyspark.ml.feature import VectorAssembler
+from pyspark.sql import Row
+
+# Initialize Spark session
+spark = SparkSession.builder.appName("GMMExample").getOrCreate()
+
+# Create a mock dataset
+data = [
+    Row(feature1=1.0, feature2=2.0),
+ Row(feature1=1.0, feature2=2.0),
+    Row(feature1=1.5, feature2=1.8),
+    Row(feature1=5.0, feature2=8.0),
+    Row(feature1=8.0, feature2=8.0),
+    Row(feature1=1.0, feature2=0.6),
+    Row(feature1=9.0, feature2=11.0),
+    Row(feature1=8.0, feature2=9.0),
+    Row(feature1=7.0, feature2=6.0),
+    Row(feature1=5.0, feature2=5.0),
+    Row(feature1=6.0, feature2=4.0),
+]
+
+# Create DataFrame from the mock dataset
+df = spark.createDataFrame(data)
+
+# Show the original dataset
+df.show()
+
+# Step 1: Assemble features into a single vector column
+assembler = VectorAssembler(inputCols=["feature1", "feature2"], outputCol="features")
+assembled_df = assembler.transform(df)
+
+# Step 2: Initialize the Gaussian Mixture Model (GMM) model
+gmm = GaussianMixture(k=2, featuresCol="features", predictionCol="prediction")
+
+# Step 3: Train the GMM model
+gmm_model = gmm.fit(assembled_df)
+
+# Step 4: Make predictions (assign clusters) for each point
+predictions = gmm_model.transform(assembled_df)
+
+# Show the predictions (which cluster each point belongs to)
+predictions.select("features", "prediction").show()
+
+# Step 5: Show the learned Gaussian distributions (means and covariances)
+print("Gaussian Mixture Model Centers and Covariances:")
+for i in range(gmm_model.getK()):
+    print(f"Cluster {i}: Mean = {gmm_model.gaussians[i]['mean']}, Covariance = {gmm_model.gaussians[i]['cov']}")
+    
+# Stop the Spark session
+spark.stop()
