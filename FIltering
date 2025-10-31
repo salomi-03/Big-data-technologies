@@ -1,0 +1,61 @@
+from pyspark.sql import SparkSession
+from pyspark.ml.recommendation import ALS
+from pyspark.ml.evaluation import RegressionEvaluator
+
+# Step 1: Start Spark Session
+spark = SparkSession.builder.appName("OnlineALSExample").getOrCreate()
+
+# Step 2: Create a slightly larger dataset
+data = [
+    (0, 0, 4.0),
+    (0, 1, 2.0),
+    (1, 1, 3.0),
+    (1, 0, 5.0),
+    (2, 1, 4.0),
+    (2, 2, 3.0),
+    (3, 0, 2.0),
+    (3, 2, 4.0),
+    (4, 1, 5.0),
+    (4, 0, 3.0)
+]
+columns = ["userId", "movieId", "rating"]
+
+ratings = spark.createDataFrame(data, columns)
+
+# Step 3: Split the data
+(training, test) = ratings.randomSplit([0.8, 0.2], seed=42)
+
+# Step 4: Build ALS model
+als = ALS(
+    maxIter=10,
+    regParam=0.1,
+    userCol="userId",
+    itemCol="movieId",
+    ratingCol="rating",
+    coldStartStrategy="drop"
+)
+
+# Step 5: Train the model
+model = als.fit(training)
+
+# Step 6: Predict on test set
+predictions = model.transform(test)
+predictions.show()
+
+# Step 7: Evaluate if test data is not empty
+if predictions.count() > 0:
+    evaluator = RegressionEvaluator(
+        metricName="rmse",
+        labelCol="rating",
+        predictionCol="prediction"
+    )
+    rmse = evaluator.evaluate(predictions)
+    print(f"Root Mean Squared Error = {rmse:.2f}")
+else:
+    print("Test set is empty, skipping RMSE evaluation.")
+
+# Step 8: Show recommendations
+userRecs = model.recommendForAllUsers(3)
+userRecs.show()
+
+spark.stop()
