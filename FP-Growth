@@ -1,0 +1,38 @@
+from pyspark.sql import SparkSession
+from pyspark.ml.fpm import FPGrowth
+
+# Step 1: Start Spark Session
+spark = SparkSession.builder.appName("OnlineFPGrowth").getOrCreate()
+
+# Step 2: Sample transaction dataset (hardcoded)
+# Each row represents items bought in a single transaction
+data = [
+    (0, ["milk", "bread", "butter"]),
+    (1, ["bread", "butter"]),
+    (2, ["milk", "bread"]),
+    (3, ["milk", "bread", "butter", "jam"]),
+    (4, ["bread", "butter"]),
+    (5, ["milk", "bread"]),
+    (6, ["jam", "bread"]),
+]
+columns = ["id", "items"]
+
+df = spark.createDataFrame(data, columns)
+
+# Step 3: FP-Growth model
+fpGrowth = FPGrowth(itemsCol="items", minSupport=0.3, minConfidence=0.6)
+model = fpGrowth.fit(df)
+
+# Step 4: Display frequent itemsets
+print("🔹 Frequent Itemsets:")
+model.freqItemsets.show()
+
+# Step 5: Display association rules
+print("🔹 Association Rules:")
+model.associationRules.show()
+
+# Step 6: Make predictions (what else someone might buy)
+print("🔹 Predictions:")
+model.transform(df).show()
+
+spark.stop()
