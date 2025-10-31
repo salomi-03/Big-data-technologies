@@ -1,0 +1,22 @@
+object WordCountApp {
+  def main(args: Array[String]): Unit = {
+    // Simulated file content
+    val lines = List(
+      "hello world",
+      "hello spark",
+      "spark is fast",
+      "hello world spark"
+    )
+
+    // Word count logic
+    val wordCount = lines
+      .flatMap(line => line.split(" "))
+      .groupBy(word => word)
+      .map { case (word, occurrences) => (word, occurrences.length) }
+
+    // Print result
+    wordCount.foreach { case (word, count) =>
+      println(s"$word: $count")
+    }
+  }
+}
