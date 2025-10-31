@@ -1,0 +1,53 @@
+from pyspark.sql import SparkSession
+from pyspark.ml.clustering import LDA
+from pyspark.ml.feature import CountVectorizer
+from pyspark.ml.linalg import Vectors
+from pyspark.sql import Row
+
+# Initialize Spark session
+spark = SparkSession.builder.appName("LDAExample").getOrCreate()
+
+# Create a mock dataset: Assume these are our documents (texts)
+data = [
+    Row(id=0, text="I love to watch movies and series"),
+    Row(id=1, text="I love coding and building software"),
+    Row(id=2, text="Movies and coding are fun"),
+    Row(id=3, text="Software development is great"),
+    Row(id=4, text="I enjoy playing football"),
+    Row(id=5, text="Football matches are exciting to watch"),
+]
+
+# Create DataFrame from the mock dataset
+df = spark.createDataFrame(data)
+
+# Show the original dataset
+df.show()
+
+# Step 1: Tokenize the text data into words
+from pyspark.ml.feature import Tokenizer
+tokenizer = Tokenizer(inputCol="text", outputCol="words")
+tokenized_df = tokenizer.transform(df)
+
+# Step 2: Use CountVectorizer to convert text into a bag of words
+vectorizer = CountVectorizer(inputCol="words", outputCol="features")
+vectorizer_model = vectorizer.fit(tokenized_df)
+vectorized_df = vectorizer_model.transform(tokenized_df)
+
+# Step 3: Initialize the LDA model
+lda = LDA(k=2, maxIter=10, featuresCol="features", predictionCol="prediction")
+
+# Step 4: Train the LDA model
+lda_model = lda.fit(vectorized_df)
+
+# Step 5: Make predictions (find topics for each document)
+predictions = lda_model.transform(vectorized_df)
+
+# Show the predictions (topic assignments)
+predictions.select("id", "text", "prediction").show()
+
+# Step 6: Show the topics discovered by LDA
+topics = lda_model.describeTopics(3)  # We want to show the top 3 words for each topic
+topics.show(truncate=False)
+
+# Stop the Spark session
+spark.stop()
