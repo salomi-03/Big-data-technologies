@@ -1,0 +1,51 @@
+from pyspark.sql import SparkSession
+from pyspark.ml.classification import NaiveBayes
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.sql import Row
+
+# Initialize Spark session
+spark = SparkSession.builder.appName("NaiveBayesExample").getOrCreate()
+
+# Create a mock dataset
+data = [
+    Row(feature1=1.0, feature2=2.0, feature3=3.0, label=0),
+    Row(feature1=1.5, feature2=2.5, feature3=3.5, label=1),
+    Row(feature1=2.0, feature2=3.0, feature3=4.0, label=0),
+    Row(feature1=2.5, feature2=3.5, feature3=4.5, label=1),
+    Row(feature1=3.0, feature2=4.0, feature3=5.0, label=0),
+    Row(feature1=3.5, feature2=4.5, feature3=5.5, label=1),
+]
+
+# Create DataFrame from the mock dataset
+df = spark.createDataFrame(data)
+
+# Show the original dataset
+df.show()
+
+# Step 1: Assemble features into a single vector column
+assembler = VectorAssembler(inputCols=["feature1", "feature2", "feature3"], outputCol="features")
+assembled_df = assembler.transform(df)
+
+# Step 2: Split data into training and testing sets
+train_data, test_data = assembled_df.randomSplit([0.8, 0.2], seed=1234)
+
+# Step 3: Initialize the Naive Bayes model
+nb = NaiveBayes(featuresCol="features", labelCol="label", modelType="multinomial")
+
+# Step 4: Train the model using the training data
+nb_model = nb.fit(train_data)
+
+# Step 5: Make predictions on the test data
+predictions = nb_model.transform(test_data)
+
+# Show the predictions
+predictions.select("features", "label", "prediction").show()
+
+# Step 6: Evaluate the model
+evaluator = BinaryClassificationEvaluator(labelCol="label")
+accuracy = evaluator.evaluate(predictions)
+print(f"Model Accuracy: {accuracy}")
+
+# Stop the Spark session
+spark.stop()
